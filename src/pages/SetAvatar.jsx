@@ -8,7 +8,7 @@ import { Buffer } from "buffer";
 import { setAvatarRoute } from "../utils/APIRoutes";
 
 export default function SetAvatar() {
-  const api = "https://api.multiavatar.com/45678945";
+  const api = "https://api.multiavatar.com/0tghQeVLPzBARs";
   const navigate = useNavigate();
 
   const [avatars, setAvatars] = useState([]);
@@ -31,7 +31,7 @@ export default function SetAvatar() {
 
   const setProfilePicture = async () => {
     if (selectedAvatar === undefined) {
-      toast.error("Please select an avatar", toastOptions);
+      return toast.error("Please select an avatar", toastOptions);
     } else {
       const user = await JSON.parse(localStorage.getItem("chat-app-user"));
       const { data } = await axios.post(`${setAvatarRoute}/${user._id}`, {
@@ -44,7 +44,7 @@ export default function SetAvatar() {
         localStorage.setItem("chat-app-user", JSON.stringify(user));
         navigate("/");
       } else {
-        toast.error("Error setting avatar. Please try again", toastOptions);
+        return toast.error("Error setting avatar. Please try again", toastOptions);
       }
     }
   };

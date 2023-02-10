@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import styled from "styled-components";
-import Logo from "../assets/logo.svg";
+import Logo from "../assets/logo.png";
 
 /**
  * 
@@ -32,7 +32,7 @@ export default function Contacts({ contacts, currentUser, changeChat }) {
         <Container>
           <div className="brand">
             <img src={Logo} alt="logo" />
-            <h3>snappy</h3>
+            <h2>Schmooze</h2>
           </div>
           <div className="contacts">
             {contacts.map((contact, index) => {
@@ -76,18 +76,18 @@ export default function Contacts({ contacts, currentUser, changeChat }) {
 
 const Container = styled.div`
   display: grid;
-  grid-template-rows: 10% 75% 15%;
+  grid-template-rows: 13% 72% 15%;
   overflow: hidden;
   background-color: #080420;
   .brand {
     display: flex;
-    align-items: center;
-    gap: 1rem;
+    align-items: flex-end;
     justify-content: center;
+    padding-bottom: 0.5rem;
     img {
-      height: 2rem;
+      height: 3.5rem;
     }
-    h3 {
+    h2 {
       color: white;
       text-transform: uppercase;
     }

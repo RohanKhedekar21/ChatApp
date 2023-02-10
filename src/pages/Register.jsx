@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast, ToastContainer } from "react-toastify";
 import styled from "styled-components";
-import Logo from "../assets/logo.svg";
+import Logo from "../assets/logo.png";
 import "react-toastify/dist/ReactToastify.css";
 import axios from "axios";
 import { registerRoute } from "../utils/APIRoutes";
@@ -41,12 +41,12 @@ function Register() {
         password,
       });
       if (data.status === false) {
-        toast.error(data.msg, toastOptions);
+        return toast.error(data.msg, toastOptions);
       }
       if (data.status === true) {
         localStorage.setItem("chat-app-user", JSON.stringify(data.user));
       }
-      navigate("/")
+      navigate("/");
     }
   };
 
@@ -84,7 +84,7 @@ function Register() {
         <form onSubmit={(event) => handleSubmit(event)}>
           <div className="brand">
             <img src={Logo} alt="logo" />
-            <h1>Snappy</h1>
+            <h1>Schmooze</h1>
           </div>
           <input
             type="text"
@@ -132,8 +132,7 @@ const FormContainer = styled.div`
   background-color: #131324;
   .brand {
     display: flex;
-    align-items: center;
-    gap: 1rem;
+    align-items: flex-end;
     justify-content: center;
     img {
       height: 5rem;
