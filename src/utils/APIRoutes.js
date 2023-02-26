@@ -1,4 +1,5 @@
-export const host = "http://localhost:5000";
+export const host = "http://ec2-35-154-157-117.ap-south-1.compute.amazonaws.com:5000";
+// export const host = "http://localhost:5000";
 
 export const registerRoute = `${host}/api/auth/register`
 
