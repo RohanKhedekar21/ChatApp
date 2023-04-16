@@ -83,7 +83,7 @@ const Container = styled.div`
     display: flex;
     align-items: flex-end;
     justify-content: center;
-    padding-bottom: 0.5rem;
+    padding-bottom: 1rem;
     img {
       height: 3.5rem;
     }

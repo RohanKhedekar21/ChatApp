@@ -3,10 +3,22 @@ import React, { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 import { getAllMessagesRoute, sendMessageRoute } from "../utils/APIRoutes";
 import ChatInput from "./ChatInput";
-import Logout from "./Logout";
 import { v4 as uuidv4 } from "uuid";
+import { IoMdArrowRoundBack } from "react-icons/io";
+import { FiPhoneCall } from "react-icons/fi";
+import { useNavigate } from "react-router-dom";
+import { useSocket } from "../context/SocketProvider";
+import peer from "../service/peer";
 
-export default function ChatContainer({ currentChat, currentUser, socket }) {
+export default function ChatContainer({
+  currentChat,
+  currentUser,
+  onBackClick,
+  setIsCalling,
+}) {
+  const socket = useSocket();
+  const navigate = useNavigate();
+
   const [messages, setMessages] = useState([]);
   const [arrivalMessage, setArrivalMessage] = useState(null);
 
@@ -28,8 +40,8 @@ export default function ChatContainer({ currentChat, currentUser, socket }) {
   }, [currentChat]);
 
   /**
-   * 
-   * @description 
+   *
+   * @description
    * 1. Stored msg in DB.
    * 2. Send msg to another user with socket.
    * 3. push msg in state to display.
@@ -40,7 +52,7 @@ export default function ChatContainer({ currentChat, currentUser, socket }) {
       to: currentChat._id,
       message: msg,
     });
-    socket.current.emit("send-msg", {
+    socket.emit("send-msg", {
       to: currentChat._id,
       from: currentUser._id,
       message: msg,
@@ -54,15 +66,15 @@ export default function ChatContainer({ currentChat, currentUser, socket }) {
    * @description recieve msg with socket sended from another User and set in state.
    */
   useEffect(() => {
-    if (socket.current) {
-      socket.current.on("msg-recieve", (msg) => {
+    if (socket) {
+      socket.on("msg-recieve", (msg) => {
         setArrivalMessage({ fromSelf: false, message: msg });
       });
     }
   }, []);
 
   /**
-   * @description Add msg in messeages state that are recieved from socket 
+   * @description Add msg in messeages state that are recieved from socket
    */
   useEffect(() => {
     arrivalMessage && setMessages((prev) => [...prev, arrivalMessage]);
@@ -75,12 +87,32 @@ export default function ChatContainer({ currentChat, currentUser, socket }) {
     scrollRef.current?.scrollIntoView({ behaviour: "smooth" });
   }, [messages]);
 
+  const handleCallClick = async () => {
+    console.log('>>>>handleCallClick')
+    const offer = await peer.getOffer();
+    socket.emit("user:call", {
+      to: currentChat._id,
+      from: currentUser,
+      offer,
+    });
+    setIsCalling(true);
+  };
+
   return (
     <>
       {currentChat && (
         <Container>
           <div className="chat-header">
             <div className="user-details">
+              <div
+                onClick={onBackClick}
+                style={{
+                  color: "whitesmoke",
+                  cursor: "pointer",
+                }}
+              >
+                <IoMdArrowRoundBack size={32} />
+              </div>
               <div className="avatar">
                 <img
                   src={`data:image/svg+xml;base64,${currentChat.avatarImage}`}
@@ -91,7 +123,12 @@ export default function ChatContainer({ currentChat, currentUser, socket }) {
                 <h3>{currentChat.username}</h3>
               </div>
             </div>
-            <Logout />
+            <FiPhoneCall
+              color="whitesmoke"
+              size={32}
+              cursor="pointer"
+              onClick={handleCallClick}
+            />
           </div>
           <div className="chat-messages">
             {messages.map((message) => {
@@ -130,6 +167,7 @@ const Container = styled.div`
     justify-content: space-between;
     align-items: center;
     padding: 0 2rem;
+    border-bottom: 1px solid #d1d1d1;
     .user-details {
       display: flex;
       align-items: center;
