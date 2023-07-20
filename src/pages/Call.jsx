@@ -1,115 +1,94 @@
 import styled from "styled-components";
 import { FcEndCall, FcVideoCall, FcNoVideo } from "react-icons/fc";
 import { AiFillAudio, AiOutlineAudioMuted } from "react-icons/ai";
-import { useCallback, useEffect, useState } from "react";
-import ReactPlayer from "react-player";
+import { useEffect, useRef, useState } from "react";
 import { useSocket } from "../context/SocketProvider";
-import peer from "../service/peer";
+import Peer from "simple-peer";
 
-const Call = ({ setIsCalling, currentUser, currentChat }) => {
+const Call = ({
+  currentUser,
+  currentChat,
+  isCallerCalling,
+  callerInfo,
+  callerOffer,
+}) => {
+  console.log(">>>INside Call", callerOffer);
+
   const socket = useSocket();
   const [isVideoOn, setIsVideoOn] = useState(true);
   const [isAudioOn, setIsAudioOn] = useState(true);
-  const [localStream, setLocalStream] = useState();
-  const [streamMedia, setStreamMedia] = useState();
-  const [remoteStream, setRemoteStream] = useState();
-
-  // const sendStreams = useCallback(() => {
-  //   console.log(">>>Inside sendStreams", localStream);
-  //   for (const track of localStream.getTracks()) {
-  //     peer.peer.addTrack(track, localStream);
-  //   }
-  // }, [localStream]);
+  
+  const [stream, setStream] = useState();
+  const userVideo = useRef();
+  const partnerVideo = useRef();
 
   useEffect(() => {
-    (async () => {
-      const stream = await navigator.mediaDevices
-        .getUserMedia({
-          audio: true,
-          video: true,
-        })
-        .then((streaming) => {
-          for (const track of streaming.getTracks()) {
-            peer.peer.addTrack(track, streaming);
-          }
-          setLocalStream(streaming);
+    navigator.mediaDevices
+      .getUserMedia({ audio: true, video: true })
+      .then((stream) => {
+        setStream(stream);
+        if (userVideo.current) {
+          userVideo.current.srcObject = stream;
+        }
+      });
+  }, []);
+
+  useEffect(() => {
+    if (isCallerCalling) {
+      const peer = new Peer({
+        initiator: true,
+        trickle: false,
+        stream: stream,
+        config: {
+          iceServers: [
+            {
+              urls: [
+                "stun:stun.l.google.com:19302",
+                "stun:global.stun.twilio.com:3478",
+              ],
+            },
+          ],
+        },
+      });
+
+      peer.on("signal", (data) => {
+        socket.emit("user:call", {
+          to: currentChat._id,
+          from: currentUser,
+          offer: data,
+        });
+      });
+
+      peer.on("stream", (stream) => {
+        if (partnerVideo.current) {
+          partnerVideo.current.srcObject = stream;
+        }
+      });
+
+      socket.on("call:accepted", ({ from, ans }) => {
+        console.log(">>>call accepted", ans);
+        peer.signal(ans);
+      });
+    } else {
+      if (stream) {
+        const peer = new Peer({
+          initiator: false,
+          trickle: false,
+          stream: stream,
         });
 
-      const channel = await peer.peer.createDataChannel("chat");
-      channel.onopen = () => {
-        channel.send("Hi Testing");
-      };
-      channel.onmessage = (event) => {
-        console.log(">>>>>>Channel msg", event.data);
-      };
+        peer.on("signal", (data) => {
+          socket.emit("call:accepted", { to: callerInfo._id, ans: data });
+        });
 
-      //   sendStreams();
-    })();
-  }, []);
+        peer.on("stream", (stream) => {
+          partnerVideo.current.srcObject = stream;
+        });
 
-  const handleCallAccepted = useCallback(async ({ from, ans }) => {
-    console.log(">>>call accepted");
-    await peer.setLocalDescription(ans);
-    //   sendStreams();
-  }, []);
-
-  const handleNegoNeeded = useCallback(async () => {
-    console.log(">>>handleNegoNeeded");
-    const offer = await peer.getOffer();
-    socket.emit("peer:nego:needed", { offer, to: currentChat._id });
-  }, [currentChat._id, socket]);
-
-  const icecandidate = useCallback(async () => {
-    console.log(">>>>icecandidate call");
-  }, []);
-
-  useEffect(() => {
-    peer.peer.addEventListener("negotiationneeded", handleNegoNeeded);
-    peer.peer.addEventListener("icecandidate", icecandidate);
-    return () => {
-      peer.peer.removeEventListener("negotiationneeded", handleNegoNeeded);
-      peer.peer.removeEventListener("icecandidate", icecandidate);
-    };
-  }, [icecandidate]);
-
-  const handleNegoNeedIncomming = useCallback(
-    async ({ from, offer }) => {
-      console.log(">>>>handleNegoNeedIncomming");
-      const ans = await peer.getAnswer(offer);
-      socket.emit("peer:nego:done", { to: from, ans });
-      // sendStreams();
-    },
-    [socket]
-  );
-
-  const handleNegoNeedFinal = useCallback(async ({ ans }) => {
-    console.log(">>>handleNegoNeedFinal");
-    await peer.setLocalDescription(ans);
-  }, []);
-
-  useEffect(() => {
-    peer.peer.addEventListener("track", async (ev) => {
-      const remoteStream = ev.streams;
-      console.log("GOT TRACKS!!", remoteStream);
-      setRemoteStream(remoteStream[0]);
-    });
-  }, []);
-
-  useEffect(() => {
-    socket.on("call:accepted", handleCallAccepted);
-    socket.on("peer:nego:needed", handleNegoNeedIncomming);
-    socket.on("peer:nego:final", handleNegoNeedFinal);
-    return () => {
-      socket.off("call:accepted", handleCallAccepted);
-      socket.off("peer:nego:needed", handleNegoNeedIncomming);
-      socket.off("peer:nego:final", handleNegoNeedFinal);
-    };
-  }, [
-    socket,
-    handleCallAccepted,
-    handleNegoNeedIncomming,
-    handleNegoNeedFinal,
-  ]);
+        peer.signal(callerOffer);
+      }
+    }
+  }, [stream]);
 
   const userInfo = (userInfo) => {
     return (
@@ -127,39 +106,39 @@ const Call = ({ setIsCalling, currentUser, currentChat }) => {
     );
   };
 
-  const callEnd = () => {
-    peer.peer.close();
-    setIsCalling(false);
-  };
+  // const callEnd = () => {
+  //   peer.peer.close();
+  //   setIsCalling(false);
+  // };
 
-  const toggleAudio = () => {
-    let audioTrack = localStream
-      .getTracks()
-      .find((track) => track.kind === "audio");
-    console.log(">>>>>audioTrack", audioTrack);
-    if (audioTrack.enabled) {
-      audioTrack.enabled = false;
-      //   setIsAudioOn(false);
-    } else {
-      audioTrack.enabled = true;
-      //   setIsAudioOn(true);
-    }
-  };
+  // const toggleAudio = () => {
+  //   let audioTrack = localStream
+  //     .getTracks()
+  //     .find((track) => track.kind === "audio");
+  //   console.log(">>>>>audioTrack", audioTrack);
+  //   if (audioTrack.enabled) {
+  //     audioTrack.enabled = false;
+  //     //   setIsAudioOn(false);
+  //   } else {
+  //     audioTrack.enabled = true;
+  //     //   setIsAudioOn(true);
+  //   }
+  // };
 
-  const toggleVideo = () => {
-    let videoTrack = localStream
-      .getTracks()
-      .find((track) => track.kind === "video");
+  // const toggleVideo = () => {
+  //   let videoTrack = localStream
+  //     .getTracks()
+  //     .find((track) => track.kind === "video");
 
-    console.log(">>>>videoTrack", videoTrack);
-    if (videoTrack.enabled) {
-      videoTrack.enabled = false;
-      //   setIsVideoOn(false);
-    } else {
-      videoTrack.enabled = true;
-      //   setIsVideoOn(true);
-    }
-  };
+  //   console.log(">>>>videoTrack", videoTrack);
+  //   if (videoTrack.enabled) {
+  //     videoTrack.enabled = false;
+  //     //   setIsVideoOn(false);
+  //   } else {
+  //     videoTrack.enabled = true;
+  //     //   setIsVideoOn(true);
+  //   }
+  // };
 
   return (
     <Container>
@@ -167,23 +146,26 @@ const Call = ({ setIsCalling, currentUser, currentChat }) => {
         <div className="localStream">
           {userInfo(currentUser)}
           <div className="stream">
-            <ReactPlayer
-              playing={true}
+            <video
               height="100%"
               width="100%"
-              url={localStream}
+              playsInline
+              muted
+              ref={userVideo}
+              autoPlay
             />
           </div>
         </div>
         <div className="remoteStream">
           {userInfo(currentChat)}
           <div className="stream">
-            {remoteStream ? (
-              <ReactPlayer
-                playing={true}
+            {partnerVideo.current ? (
+              <video
                 height="100%"
                 width="100%"
-                url={remoteStream}
+                playsInline
+                ref={partnerVideo}
+                autoPlay
               />
             ) : (
               "NO RemoteStream found"
@@ -193,16 +175,16 @@ const Call = ({ setIsCalling, currentUser, currentChat }) => {
       </div>
       <div className="operators">
         {isAudioOn ? (
-          <AiFillAudio className="icons" onClick={toggleAudio} />
+          <AiFillAudio className="icons" /* onClick={toggleAudio} */ />
         ) : (
-          <AiOutlineAudioMuted className="icons" onClick={toggleAudio} />
+          <AiOutlineAudioMuted className="icons" /* onClick={toggleAudio} */ />
         )}
         {isVideoOn ? (
-          <FcVideoCall className="icons" onClick={toggleVideo} />
+          <FcVideoCall className="icons" /* onClick={toggleVideo} */ />
         ) : (
-          <FcNoVideo className="icons" onClick={toggleVideo} />
+          <FcNoVideo className="icons" /* onClick={toggleVideo} */ />
         )}
-        <FcEndCall className="icons" onClick={callEnd} />
+        <FcEndCall className="icons" /* onClick={callEnd} */ />
       </div>
     </Container>
   );

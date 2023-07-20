@@ -4,6 +4,11 @@ import './index.css';
 import App from './App';
 import { BrowserRouter } from 'react-router-dom';
 import { SocketProvider } from './context/SocketProvider';
+import * as process from 'process';
+
+window.global = window;
+window.process = process;
+window.Buffer = [];
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(

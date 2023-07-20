@@ -1,5 +1,5 @@
 import axios from "axios";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
 import ChatContainer from "../components/ChatContainer";
@@ -9,9 +9,9 @@ import { allUsersRoute } from "../utils/APIRoutes";
 import Call from "./Call";
 import { useSocket } from "../context/SocketProvider";
 import Modal from "react-modal";
-import peer from "../service/peer";
 
-function Chat() {
+const Chat = () => {
+  console.log(">>>>INside CHAT");
   const socket = useSocket();
   const [contacts, setContacts] = useState([]);
   const [currentUser, setCurrentUser] = useState(undefined);
@@ -20,13 +20,14 @@ function Chat() {
   const [isCalling, setIsCalling] = useState(false);
   const [isIncommingCall, setIsIncommingCall] = useState(false);
   const [callerInfo, setCallerInfo] = useState();
-  const [offer, setOffer] = useState();
+  const [callerOffer, setCallerOffer] = useState();
+  const [isCallerCalling, setCallerCalling] = useState(false);
 
   const navigate = useNavigate();
 
   const handleIncommingCall = useCallback(async ({ from, offer }) => {
-    console.log(">>>Incomming call", from, offer);
-    setOffer(offer);
+    
+    setCallerOffer(offer);
     setCallerInfo(from);
     setIsIncommingCall(true);
   }, []);
@@ -61,7 +62,7 @@ function Chat() {
     if (currentUser) {
       socket.emit("add-user", currentUser._id);
     }
-  }, [currentUser]);
+  }, [currentUser, socket]);
 
   /**
    * Functioning:
@@ -81,7 +82,7 @@ function Chat() {
         navigate("/setAvatar");
       }
     }
-  }, [currentUser]);
+  }, [currentUser, navigate]);
 
   const handleChatChange = (chat) => {
     setCurrentChat(chat);
@@ -92,10 +93,12 @@ function Chat() {
   };
 
   const handleAcceptCall = async () => {
-    setCurrentChat(callerInfo);
-    const ans = await peer.getAnswer(offer);
-    socket.emit("call:accepted", { to: callerInfo._id, ans });
     setIsIncommingCall(false);
+    setIsCalling(true);
+  };
+
+  const handleCallClick = () => {
+    setCallerCalling(true);
     setIsCalling(true);
   };
 
@@ -129,6 +132,9 @@ function Chat() {
             setIsCalling={setIsCalling}
             currentUser={currentUser}
             currentChat={currentChat}
+            isCallerCalling={isCallerCalling}
+            callerInfo={callerInfo}
+            callerOffer={callerOffer}
           />
         ) : (
           <div className="chat-view">
@@ -144,7 +150,7 @@ function Chat() {
                 currentChat={currentChat} // User From List to Chat with
                 currentUser={currentUser} // Account Owner
                 onBackClick={handleBackToWelcomePage}
-                setIsCalling={setIsCalling}
+                handleCallClick={handleCallClick}
               />
             )}
           </div>
@@ -152,7 +158,7 @@ function Chat() {
       </div>
     </Container>
   );
-}
+};
 
 export default Chat;
 

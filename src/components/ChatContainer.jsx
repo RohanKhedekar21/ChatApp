@@ -6,18 +6,15 @@ import ChatInput from "./ChatInput";
 import { v4 as uuidv4 } from "uuid";
 import { IoMdArrowRoundBack } from "react-icons/io";
 import { FiPhoneCall } from "react-icons/fi";
-import { useNavigate } from "react-router-dom";
 import { useSocket } from "../context/SocketProvider";
-import peer from "../service/peer";
 
 export default function ChatContainer({
   currentChat,
   currentUser,
   onBackClick,
-  setIsCalling,
+  handleCallClick
 }) {
   const socket = useSocket();
-  const navigate = useNavigate();
 
   const [messages, setMessages] = useState([]);
   const [arrivalMessage, setArrivalMessage] = useState(null);
@@ -71,7 +68,7 @@ export default function ChatContainer({
         setArrivalMessage({ fromSelf: false, message: msg });
       });
     }
-  }, []);
+  }, [socket]);
 
   /**
    * @description Add msg in messeages state that are recieved from socket
@@ -86,17 +83,6 @@ export default function ChatContainer({
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behaviour: "smooth" });
   }, [messages]);
-
-  const handleCallClick = async () => {
-    console.log('>>>>handleCallClick')
-    const offer = await peer.getOffer();
-    socket.emit("user:call", {
-      to: currentChat._id,
-      from: currentUser,
-      offer,
-    });
-    setIsCalling(true);
-  };
 
   return (
     <>
